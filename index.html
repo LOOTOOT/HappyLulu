@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy小卤酱</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #FFFBF8 0%, #FFCCB6 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 场景容器 */
+        .scene {
+            display: none;
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        .scene.active {
+            display: flex;
+        }
+
+        /* ========== 场景A: PS5风格选择界面 ========== */
+        #sceneA {
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 20px;
+        }
+
+        .typing-text {
+            font-size: clamp(24px, 5vw, 48px);
+            color: #D8F878;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(216, 248, 120, 0.5);
+        }
+
+        .avatars-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 30px;
+            max-width: 800px;
+            width: 100%;
+            margin-top: 60px;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .avatars-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .avatar-item {
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+            position: relative;
+        }
+
+        .avatar-item:hover {
+            transform: translateY(-10px);
+        }
+
+        .avatar-circle {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid #D8F878;
+            box-shadow: 0 8px 32px rgba(216, 248, 120, 0.3);
+            transition: all 0.4s;
+            position: relative;
+        }
+
+        .avatar-circle:hover {
+            border-color: #FFCCB6;
+            box-shadow: 0 12px 48px rgba(255, 204, 182, 0.5);
+        }
+
+        .avatar-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-name {
+            color: #D8F878;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* 错误动画 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) translateY(-10px); }
+            25% { transform: translateX(-10px) translateY(-10px); }
+            75% { transform: translateX(10px) translateY(-10px); }
+        }
+
+        @keyframes redFlash {
+            0%, 100% { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+            50% { background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FF0000 100%); }
+        }
+
+        .error-shake {
+            animation: shake 0.5s;
+        }
+
+        .error-flash {
+            animation: redFlash 0.5s 3;
+        }
+
+        /* 粒子画布 */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* ========== 场景B: 微信聊天界面 ========== */
+        #sceneB {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .welcome-screen {
+            text-align: center;
+            color: #333;
+        }
+
+        .avatar-large {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            border: 5px solid #D8F878;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .avatar-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(216, 248, 120, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(216, 248, 120, 1), 0 0 60px rgba(216, 248, 120, 0.8); }
+        }
+
+        .avatar-large.glowing {
+            animation: glow 2s infinite;
+        }
+
+        .loading-text {
+            font-size: 24px;
+            color: #333;
+            margin-top: 20px;
+        }
+
+        .wechat-container {
+            max-width: 500px;
+            width: 100%;
+            background: #EDEDED;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: none;
+            flex-direction: column;
+            height: 80vh;
+            max-height: 700px;
+        }
+
+        .wechat-container.show {
+            display: flex;
+        }
+
+        .wechat-header {
+            background: #EDEDED;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #D1D1D1;
+            font-size: 18px;
+            color: #000;
+            font-weight: 500;
+        }
+
+        .wechat-chat {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #EDEDED;
+            position: relative;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: flex-end;
+            opacity: 0;
+            animation: fadeInMessage 0.5s forwards;
+        }
+
+        @keyframes fadeInMessage {
+            to { opacity: 1; }
+        }
+
+        .message.left {
+            justify-content: flex-start;
+        }
+
+        .message.right {
+            justify-content: flex-end;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.left .message-avatar {
+            margin-right: 10px;
+        }
+
+        .message.right .message-avatar {
+            margin-left: 10px;
+        }
+
+        .message.left .message-content {
+            background: #FFFBF8;
+            margin-left: 0;
+        }
+
+        .message.right .message-content {
+            background: #95EC69;
+            margin-right: 0;
+        }
+
+        .wechat-options {
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            background: #F7F7F7;
+            border-top: 1px solid #D1D1D1;
+        }
+
+        .option-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #D8F878;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .option-btn:hover {
+            background: #D8F878;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(216, 248, 120, 0.4);
+        }
+
+        /* ========== 场景C: 生日蛋糕 ========== */
+        #sceneC {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+        }
+
+        .white-circle {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            transform: scale(0);
+        }
+
+        .white-circle.expand {
+            animation: expandCircle 1.5s forwards;
+        }
+
+        @keyframes expandCircle {
+            to {
+                transform: scale(200);
+            }
+        }
+
+        .cake-container {
+            text-align: center;
+            opacity: 0;
+        }
+
+        .cake-container.show {
+            animation: fadeInCake 2s forwards;
+        }
+
+        @keyframes fadeInCake {
+            to { opacity: 1; }
+        }
+
+        .cake-image {
+            max-width: 400px;
+            width: 90%;
+            height: auto;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 20px 40px rgba(216, 248, 120, 0.3));
+        }
+
+        .cake-image.bounce {
+            animation: musicBounce 0.6s ease-in-out infinite;
+        }
+
+        @keyframes musicBounce {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.05) translateY(-10px); }
+        }
+
+        .birthday-text {
+            font-size: clamp(28px, 6vw, 48px);
+            color: #D8F878;
+            font-weight: 700;
+            text-shadow: 0 0 30px rgba(216, 248, 120, 0.8);
+            margin-top: 20px;
+            opacity: 0;
+        }
+
+        .birthday-text.show {
+            animation: floatUp 2s forwards;
+        }
+
+        @keyframes floatUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .home-btn {
+            margin-top: 40px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #D8F878 0%, #FFCCB6 100%);
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #333;
+            opacity: 0;
+        }
+
+        .home-btn.show {
+            animation: fadeIn 1s 0.5s forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .home-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(216, 248, 120, 0.5);
+        }
+
+        /* ========== 页脚 ========== */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .footer a {
+            color: #D8F878;
+            text-decoration: none;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .avatars-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                padding: 0 10px;
+            }
+
+            .avatar-circle {
+                width: 100px;
+                height: 100px;
+            }
+
+            .avatar-name {
+                font-size: 14px;
+            }
+
+            .wechat-container {
+                height: 85vh;
+                border-radius: 0;
+            }
+
+            .message-content {
+                font-size: 14px;
+            }
+        }
+
+        /* 加载动画 */
+        .spinner {
+            border: 4px solid rgba(216, 248, 120, 0.3);
+            border-top: 4px solid #D8F878;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 粒子画布 -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- 场景A: PS5风格选择 -->
+    <div id="sceneA" class="scene active">
+        <div class="typing-text" id="typingText"></div>
+        <div class="avatars-container" id="avatarsContainer">
+            <div class="avatar-item" data-id="1" data-name="帝皇鹿">
+                <div class="avatar-circle">
+                    <img src="https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/img-1.png" alt="帝皇鹿">
+                </div>
+                <div class="avatar-name">帝皇鹿</div>
+            </div>
+            <div class="avatar-item" data-id="2" data-name="小卤酱">
+                <div class="avatar-circle">
+                    <img src="https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/img-2.png" alt="小卤酱">
+                </div>
+                <div class="avatar-name">小卤酱</div>
+            </div>
+            <div class="avatar-item" data-id="3" data-name="宇森~下雪了">
+                <div class="avatar-circle">
+                    <img src="https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/img-3.png" alt="宇森~下雪了">
+                </div>
+                <div class="avatar-name">宇森~下雪了</div>
+            </div>
+            <div class="avatar-item" data-id="4" data-name="小卤菜">
+                <div class="avatar-circle">
+                    <img src="https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/img-4.png" alt="小卤菜">
+                </div>
+                <div class="avatar-name">小卤菜</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 场景B: 微信聊天 -->
+    <div id="sceneB" class="scene">
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="avatar-large" id="avatarLarge">
+                <img src="https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/img-2.png" alt="小卤酱">
+            </div>
+            <div class="spinner"></div>
+            <div class="loading-text">某人发来消息，正在接收...</div>
+        </div>
+
+        <div class="wechat-container" id="wechatContainer">
+            <div class="wechat-header">范吻❤️</div>
+            <div class="wechat-chat" id="wechatChat"></div>
+            <div class="wechat-options" id="wechatOptions"></div>
+        </div>
+    </div>
+
+    <!-- 场景C: 生日蛋糕 -->
+    <div id="sceneC" class="scene">
+        <div class="white-circle" id="whiteCircle"></div>
+        <div class="cake-container" id="cakeContainer">
+            <img src="https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/birthdaycake.png" alt="生日蛋糕" class="cake-image" id="cakeImage">
+            <div class="birthday-text" id="birthdayText">生日快乐哦~</div>
+            <button class="home-btn" id="homeBtn">返回首页</button>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <div class="footer">
+        作者: fan🪭 | © 2025 乐在2025
+    </div>
+
+    <script>
+        // ========== 全局状态管理 ==========
+        let currentScene = 'A';
+        let chatStep = 0;
+
+        // ========== 粒子系统 ==========
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+
+        class Particle {
+            constructor(x, y, emoji) {
+                this.x = x;
+                this.y = y;
+                this.emoji = emoji;
+                this.speed = Math.random() * 2 + 1;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 4 - 2;
+                this.size = Math.random() * 20 + 20;
+            }
+
+            update() {
+                this.y += this.speed;
+                this.rotation += this.rotationSpeed;
+                if (this.y > canvas.height) {
+                    this.y = -50;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation * Math.PI / 180);
+                ctx.font = `${this.size}px Arial`;
+                ctx.fillText(this.emoji, 0, 0);
+                ctx.restore();
+            }
+        }
+
+        function createParticles(emoji, count = 15) {
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height - canvas.height,
+                    emoji
+                ));
+            }
+        }
+
+        function animateParticles() {
+            if (particles.length > 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw();
+                });
+                requestAnimationFrame(animateParticles);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // ========== 场景A: 打字机效果 ==========
+        const typingText = document.getElementById('typingText');
+        const avatarsContainer = document.getElementById('avatarsContainer');
+        const text = "hi, 今天是谁过生日?";
+        let charIndex = 0;
+
+        function typeWriter() {
+            if (charIndex < text.length) {
+                typingText.textContent += text.charAt(charIndex);
+                charIndex++;
+                setTimeout(typeWriter, 150);
+            } else {
+                setTimeout(() => {
+                    typingText.style.opacity = '0';
+                    typingText.style.transition = 'opacity 1s';
+                    setTimeout(() => {
+                        typingText.style.display = 'none';
+                        avatarsContainer.classList.add('show');
+                    }, 1000);
+                }, 1000);
+            }
+        }
+
+        // 启动打字机效果
+        setTimeout(typeWriter, 500);
+
+        // ========== 场景A: 头像选择 ==========
+        document.querySelectorAll('.avatar-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const sceneAElement = document.getElementById('sceneA');
+
+                if (id === '2') {
+                    // 正确答案 - 波纹效果
+                    createRippleEffect(this);
+                    setTimeout(() => {
+                        switchScene('B');
+                    }, 1000);
+                } else {
+                    // 错误答案 - 红灯闪烁和振动
+                    this.classList.add('error-shake');
+                    sceneAElement.classList.add('error-flash');
+                    
+                    // 创建对应的粒子效果
+                    if (id === '1') createParticles('🦌', 20);
+                    else if (id === '3') createParticles('❄️', 25);
+                    else if (id === '4') createParticles('🥦', 20);
+                    
+                    animateParticles();
+
+                    setTimeout(() => {
+                        this.classList.remove('error-shake');
+                        sceneAElement.classList.remove('error-flash');
+                        setTimeout(() => {
+                            particles = [];
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        }, 3000);
+                    }, 1500);
+                }
+            });
+
+            // 长按效果
+            let pressTimer;
+            item.addEventListener('mousedown', function() {
+                const id = this.getAttribute('data-id');
+                pressTimer = setTimeout(() => {
+                    if (id === '1') createParticles('🦌', 20);
+                    else if (id === '2') createRippleEffect(this);
+                    else if (id === '3') createParticles('❄️', 25);
+                    else if (id === '4') createParticles('🥦', 20);
+                    
+                    if (id !== '2') animateParticles();
+                }, 200);
+            });
+
+            item.addEventListener('mouseup', () => clearTimeout(pressTimer));
+            item.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+        });
+
+        // 波纹效果
+        function createRippleEffect(element) {
+            const circle = element.querySelector('.avatar-circle');
+            const ripple = document.createElement('div');
+            ripple.style.position = 'absolute';
+            ripple.style.width = '100%';
+            ripple.style.height = '100%';
+            ripple.style.borderRadius = '50%';
+            ripple.style.background = 'rgba(216, 248, 120, 0.3)';
+            ripple.style.top = '0';
+            ripple.style.left = '0';
+            ripple.style.transform = 'scale(0)';
+            ripple.style.animation = 'ripple 1s ease-out';
+            circle.appendChild(ripple);
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes ripple {
+                    to {
+                        transform: scale(2);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+
+            setTimeout(() => ripple.remove(), 1000);
+        }
+
+        // ========== 场景切换 ==========
+        function switchScene(scene) {
+            document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+            document.getElementById('scene' + scene).classList.add('active');
+            currentScene = scene;
+
+            if (scene === 'B') {
+                startSceneB();
+            } else if (scene === 'C') {
+                startSceneC();
+            }
+        }
+
+        // ========== 场景B: 微信聊天 ==========
+        function startSceneB() {
+            const avatarLarge = document.getElementById('avatarLarge');
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const wechatContainer = document.getElementById('wechatContainer');
+
+            // 头像闪光效果
+            avatarLarge.classList.add('glowing');
+
+            // 3秒后显示聊天界面
+            setTimeout(() => {
+                welcomeScreen.style.display = 'none';
+                wechatContainer.classList.add('show');
+                startChat();
+            }, 3000);
+        }
+
+        function startChat() {
+            const chat = document.getElementById('wechatChat');
+            const options = document.getElementById('wechatOptions');
+
+            // 第一条消息
+            setTimeout(() => {
+                addMessage('left', '哦哈哟抠搜咦马丝', 'img-left-1.png');
+                
+                setTimeout(() => {
+                    showOptions(['?', '搞什么?'], (choice) => {
+                        addMessage('right', choice, 'img-right.jpg');
+                        
+                        // 开始掉蛋糕emoji
+                        createParticles('🎂', 20);
+                        animateParticles();
+                        
+                        setTimeout(() => {
+                            addMessage('left', '小撸姐姐生日快乐昂', 'img-left-1.png');
+                            
+                            setTimeout(() => {
+                                addMessage('left', '来,"我是酷姐小璐我就是超级飞侠哦耶"', 'img-left-1.png');
+                                
+                                setTimeout(() => {
+                                    showOptions(['?😂', '什么鬼?'], (choice2) => {
+                                        addMessage('right', choice2, 'img-right.jpg');
+                                        
+                                        setTimeout(() => {
+                                            addMessage('left', '😏😙', 'img-left-1.png');
+                                            
+                                            setTimeout(() => {
+                                                addMessage('left', '上真微信来问我。()', 'img-left-1.png');
+                                                particles = [];
+                                                
+                                                setTimeout(() => {
+                                                    switchScene('C');
+                                                }, 2000);
+                                            }, 1000);
+                                        }, 1000);
+                                    });
+                                }, 1500);
+                            }, 1500);
+                        }, 2000);
+                    });
+                }, 1000);
+            }, 500);
+        }
+
+        function addMessage(side, text, avatarImg) {
+            const chat = document.getElementById('wechatChat');
+            const message = document.createElement('div');
+            message.className = `message ${side}`;
+
+            const avatarSrc = `https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/${avatarImg}`;
+
+            if (side === 'left') {
+                message.innerHTML = `
+                    <div class="message-avatar"><img src="${avatarSrc}" alt="avatar"></div>
+                    <div class="message-content">${text}</div>
+                `;
+            } else {
+                message.innerHTML = `
+                    <div class="message-content">${text}</div>
+                    <div class="message-avatar"><img src="${avatarSrc}" alt="avatar"></div>
+                `;
+            }
+
+            chat.appendChild(message);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function showOptions(optionsArray, callback) {
+            const optionsContainer = document.getElementById('wechatOptions');
+            optionsContainer.innerHTML = '';
+
+            optionsArray.forEach(option => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.onclick = function() {
+                    optionsContainer.innerHTML = '';
+                    callback(option);
+                };
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        // ========== 场景C: 生日蛋糕 ==========
+        function startSceneC() {
+            const whiteCircle = document.getElementById('whiteCircle');
+            const cakeContainer = document.getElementById('cakeContainer');
+            const cakeImage = document.getElementById('cakeImage');
+            const birthdayText = document.getElementById('birthdayText');
+            const homeBtn = document.getElementById('homeBtn');
+
+            // 播放音乐
+            const audio = new Audio('https://cdn.jsdelivr.net/gh/LOOTOOT/HappyLulu@main/HappyBirthdaySong.mp3');
+            audio.play().catch(e => console.log('音频播放需要用户交互'));
+
+            // 2秒后白点扩散
+            setTimeout(() => {
+                whiteCircle.classList.add('expand');
+                
+                setTimeout(() => {
+                    document.getElementById('sceneC').style.background = '#FFFBF8';
+                    cakeContainer.classList.add('show');
+                    
+                    // 音乐跳动效果
+                    cakeImage.classList.add('bounce');
+                    
+                    setTimeout(() => {
+                        birthdayText.classList.add('show');
+                        
+                        // 音乐结束后显示按钮
+                        audio.addEventListener('ended', () => {
+                            cakeImage.classList.remove('bounce');
+                            homeBtn.classList.add('show');
+                        });
+                        
+                        // 备用方案：15秒后显示按钮
+                        setTimeout(() => {
+                            if (!homeBtn.classList.contains('show')) {
+                                cakeImage.classList.remove('bounce');
+                                homeBtn.classList.add('show');
+                            }
+                        }, 15000);
+                    }, 1000);
+                }, 1500);
+            }, 2000);
+        }
+
+        // 返回首页
+        document.getElementById('homeBtn').addEventListener('click', () => {
+            location.reload();
+        });
+
+        // 响应式canvas
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
